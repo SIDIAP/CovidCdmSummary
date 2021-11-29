@@ -40,13 +40,14 @@ oracleTempSchema<-NULL
 
 # If you haven´t already, save database details to .Renviron by running:
 # usethis::edit_r_environ()
-server<-"10.80.192.22/postgres21t2"
-server_dbi<-"postgres21t2"
+server<-"...."
+server_dbi<-"...."
 
 user<-Sys.getenv("DB_USER")
 password<- Sys.getenv("DB_PASSWORD")
 port<-Sys.getenv("DB_PORT") 
 host<-Sys.getenv("DB_HOST") 
+
 connectionDetails <-DatabaseConnector::downloadJdbcDrivers("postgresql", here::here())
 connectionDetails <- DatabaseConnector::createConnectionDetails(dbms = "postgresql",
                                                                 server =server,
@@ -64,29 +65,29 @@ db <- dbConnect(RPostgreSQL::PostgreSQL(),
 
 
 # The OHDSI DatabaseConnector connection details
-targetDialect <-"postgresql" 
+targetDialect <-"...." 
 # This is your sql dialect used with the OHDSI SqlRender package
 
 # The name of the schema that contains the OMOP CDM with patient-level data
-cdm_database_schema<-"omop21t2_cmbd"
+cdm_database_schema<-"...."
 # The name of the schema that contains the vocabularies
-vocabulary_database_schema<-"omop21t2_cmbd"
+vocabulary_database_schema<-"...."
 
 # The name of the schema where a results table will be created 
-results_database_schema<-"results21t2_cmbd"
+results_database_schema<-"...."
 
 # Tables to be created in your results schema for this analysis
 # You can keep the above names or change them
 # Note, any existing tables in your results schema with the same name will be overwritten
-cohortTable<-"SidiapCovidCdm"
-cohortTableComorbidities<-"SidiapCovidCdmComorbidities"
+cohortTable<-"...."
+cohortTableComorbidities<-"...."
 
 # The name/ acronym for your database (to be used in the titles of reports, etc)
-db.name<-"SIDIAP CMBDH-AH"
+db.name<-"...."
 
 # if you have already created the cohorts, you can set this to FALSE to skip instantiating these cohorts again
-create.cohortTable<-TRUE
-create.cohortTableComorbidities<-TRUE
+create.cohortTable<-FALSE
+create.cohortTableComorbidities<-FALSE
 
 
 # run the analysis ------
