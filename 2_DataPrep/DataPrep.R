@@ -1,7 +1,7 @@
 
 ## Study dates ----
 study.start.date<-as.Date("01/03/2020", "%d/%m/%Y")
-study.end.date<-as.Date("30/06/2021", "%d/%m/%Y")
+study.end.date<-as.Date("30/06/2022", "%d/%m/%Y")
 
 ## Study population -----
 # All persons in the db as of start date -----
@@ -9,7 +9,7 @@ person<-person_db %>%
    select("person_id" , "gender_concept_id", "year_of_birth", "month_of_birth", "day_of_birth", 
          "location_id") %>% 
   left_join(observation_period_db %>% 
-   select("person_id", "observation_period_start_date", "observation_period_end_date"))%>% 
+  select("person_id", "observation_period_start_date", "observation_period_end_date"))%>% 
   collect() %>% 
   filter(observation_period_start_date<study.start.date)%>% 
   filter(observation_period_end_date>=study.start.date) 
@@ -193,6 +193,50 @@ person<-person %>%
    COVID19_PCR_positive_test_date>=COVID19_hospital_date,
                  as.Date(NA), COVID19_PCR_positive_test_date))
 
+
+# get covid-19 ICU admission over follow-up ----
+icu_db<-cohorts_db %>% 
+  select(subject_id, cohort_start_date) %>% 
+  rename("person_id"="subject_id") %>% 
+  distinct() %>% 
+  inner_join(visit_occurrence_db %>% 
+               filter(visit_concept_id %in% c(32037)) %>% 
+               filter(visit_start_date >= study.start.date)  %>% 
+               select(person_id, visit_start_date, visit_end_date) %>% 
+               distinct())
+icu<-icu_db %>% 
+  collect()
+
+# index icu
+# between 21 days before up to three days after
+index_icu<-icu %>% 
+  mutate(dtime=as.numeric(difftime(cohort_start_date, visit_start_date, units="days"))) %>% 
+  filter(dtime >= -21)%>% 
+  filter(dtime <= 3) %>% 
+  select(-dtime) %>% 
+  arrange(person_id, visit_start_date) %>% 
+  group_by(person_id) %>% 
+  mutate(seq=1:length(person_id)) %>% 
+  filter(seq==1) %>% 
+  select(person_id, visit_start_date) %>% # date of admission is index date
+  rename("COVID19_icu_date"="visit_start_date") 
+person<-person %>% 
+  left_join(index_icu)
+
+# drop any diangosis/ test results on or after icu admission date -----
+person<-person %>% 
+  mutate(COVID19_diagnosis_broad_date=if_else(!is.na(COVID19_icu_date) &
+                                                COVID19_diagnosis_broad_date>=COVID19_icu_date,
+                                              as.Date(NA), COVID19_diagnosis_broad_date)) %>% 
+  mutate(COVID19_diagnosis_narrow_date=if_else(!is.na(COVID19_icu_date) &
+                                                 COVID19_diagnosis_narrow_date>=COVID19_icu_date,
+                                               as.Date(NA), COVID19_diagnosis_narrow_date)) %>% 
+  mutate(COVID19_positive_test_date=if_else(!is.na(COVID19_icu_date) &
+                                              COVID19_positive_test_date>=COVID19_icu_date,
+                                            as.Date(NA), COVID19_positive_test_date)) %>% 
+  mutate(COVID19_PCR_positive_test_date=if_else(!is.na(COVID19_icu_date) &
+                                                  COVID19_PCR_positive_test_date>=COVID19_icu_date,
+                                                as.Date(NA), COVID19_PCR_positive_test_date))
 
 # get covid-19 death date  -----
 covid.deaths<-cohorts_db %>% 

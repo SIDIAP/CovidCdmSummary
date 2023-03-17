@@ -1,6 +1,37 @@
 Sys.setlocale("LC_TIME", "English")
 options(scipen=999)
 
+# add vaccines-----
+person <- person %>%
+  left_join(first_vacc %>%
+              select(person_id, drug_exposure_start_date) %>%
+              rename("COVID19_vaccine_date"="drug_exposure_start_date"), by="person_id")
+
+person1<- person %>%
+  left_join(first_vacc %>%
+  filter(first_dose == "BNT162b2 first-dose")%>%
+  select(person_id, drug_exposure_start_date) %>% # date of admission is index date
+  rename("BNT162b2_date"="drug_exposure_start_date"))
+
+person1<- person1 %>%
+  left_join(first_vacc %>%
+  filter(first_dose == "ChAdOx1 first-dose")%>%
+  select(person_id, drug_exposure_start_date) %>% # date of admission is index date
+  rename("ChAdOx1_date"="drug_exposure_start_date"))
+
+person1<- person1 %>%
+  left_join(first_vacc %>%
+              filter(first_dose == "mRNA-1273 first-dose")%>%
+              select(person_id, drug_exposure_start_date) %>% # date of admission is index date
+              rename("mRNA1273_date"="drug_exposure_start_date"))
+
+person1<- person1 %>%
+  left_join(first_vacc %>%
+              filter(first_dose == "Ad26.COV2.S")%>%
+              select(person_id, drug_exposure_start_date) %>% # date of admission is index date
+              rename("Ad26COV2S_date"="drug_exposure_start_date"))
+
+person <- person1
 # table of patient characteristics --------------
 get.summary.characteristics<-function(working.data, working.name){
 
@@ -126,12 +157,18 @@ table1<-get.summary.characteristics(person, "Overall") %>%
    left_join(get.summary.characteristics(person %>% 
                                            filter(!is.na(person$COVID19_diagnosis_test_date)),
                                          "Outpatient COVID-19 diagnosis or positive test")) %>% 
-   left_join(get.summary.characteristics(person %>% 
-                                           filter(!is.na(person$COVID19_hospital_date )),
-                                         "Hospitalised with COVID-19")) %>% 
-   left_join(get.summary.characteristics(person %>% 
+  left_join(get.summary.characteristics(person %>% 
+                                          filter(!is.na(person$COVID19_hospital_date )),
+                                        "COVID-19 hospitalisation")) %>% 
+  left_join(get.summary.characteristics(person %>% 
+                                           filter(!is.na(person$COVID19_icu_date )),
+                                          "COVID-19 ICU admission")) %>% 
+  left_join(get.summary.characteristics(person %>% 
                                            filter(!is.na(person$COVID19_death_date)),
-                                         "Died with COVID-19"))
+                                         "Died with COVID-19")) %>%
+  left_join(get.summary.characteristics(person %>% 
+                                          filter(!is.na(person$COVID19_vaccine_date)),
+                                        "Vaccinated against COVID-19"))
 
 table1<-table1 %>%
      mutate(var=ifelse(var=="Age.under.20", "Age: Under 20", var))  %>%
@@ -172,22 +209,22 @@ person %>%
                         "Outpatient COVID-19"))) %>% 
   ggplot(aes(fill=group))+
   facet_wrap(group ~ ., ncol=1)+
-  geom_histogram(aes(date), colour="black", binwidth = 5)+
+  geom_histogram(aes(date),color="black", binwidth = 5)+
   theme_bw()+
   theme(legend.title = element_blank(),
-        axis.text=element_text(size=16),
-        axis.title=element_text(size=16,face="bold"),
-        strip.text = element_text(size=16, face="bold"),
+        axis.text=element_text(size=14),
+        axis.title=element_text(size=14,face="bold"),
+        strip.text = element_text(size=14, face="bold"),
         strip.text.y.left = element_text(angle = 0),
         strip.background = element_rect( fill="#f7f7f7"), 
-        legend.text=element_text(size=16),
+        legend.text=element_text(size=14),
         legend.position = "top")+
   ylab("N")+
   xlab("Date of cohort entry")+
   scale_fill_manual(values=c("#e34a33", "#b30000", "#2b8cbe", "#045a8d", "#984ea3"))+
   scale_y_continuous(labels = scales::comma)+
   guides(fill=guide_legend(nrow=3,byrow=TRUE)) +
-  scale_x_date(date_breaks = "5 month", date_labels =  "%b %Y") 
+  scale_x_date(date_breaks = "6 month", date_labels =  "%b %Y") 
 
 ggsave(here("StudyOutput",
   "plot.entry.outpatient.cohorts.png"),
@@ -195,51 +232,61 @@ ggsave(here("StudyOutput",
 
 # cohort entry over time ----------------------
 person %>% 
-  select(person_id, age_gr2, gender,
+  select(person_id, age_gr, gender,
+         #COVID19_vaccine_date,
          COVID19_diagnosis_test_date,
          COVID19_hospital_date,
+         COVID19_icu_date,
          COVID19_death_date)%>%
+  #rename("COVID-19 vaccination"="COVID19_vaccine_date") %>% 
   rename("Outpatient COVID-19"="COVID19_diagnosis_test_date") %>% 
-  rename("COVID-19 hospitalisation"="COVID19_hospital_date") %>% 
+  rename("COVID-19 hospitalisation"="COVID19_hospital_date") %>%
+  rename("COVID-19 ICU admission"="COVID19_icu_date") %>%
   rename("COVID-19 death"="COVID19_death_date") %>% 
   pivot_longer(!c(person_id, age_gr2, gender),names_to = "group", values_to = "date",
    values_drop_na = TRUE)%>% 
   mutate(group=factor(group,
                       levels=c(
+                    #    "COVID-19 vaccination",
                         "Outpatient COVID-19",
                         "COVID-19 hospitalisation",
+                        "COVID-19 ICU admission",
                         "COVID-19 death" ))) %>% 
     ggplot(aes(fill=group))+
   facet_grid(group ~ age_gr2, scales = "free_y")+
-  geom_histogram(aes(date), colour="black",binwidth = 5)+
+  geom_histogram(aes(date), color="black", binwidth = 8)+#8
   theme_bw()+
   theme(legend.title = element_blank(),
-        axis.text=element_text(size=14),
-        axis.title=element_text(size=16,face="bold"),
-        strip.text = element_text(size=16, face="bold"),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        strip.text = element_text(size=14, face="bold"),
         strip.text.y.left = element_text(angle = 0),
         strip.background = element_rect( fill="#f7f7f7"), 
-        legend.text=element_text(size=16),
+        legend.text=element_text(size=14),
         legend.position = "top")+
   ylab("N")+
   xlab("Date of cohort entry") +
   scale_y_continuous(labels = scales::comma)+
-  scale_fill_manual(values=c( "#984ea3","#ff7f00", "#4daf4a")) +
-  scale_x_date(date_breaks = "5 month", date_labels =  "%b %Y") 
+  scale_fill_manual(values=c("#984ea3","#ff7f00", "#910404", "#4daf4a")) +
+  scale_x_date(date_breaks = "9 month", date_labels =  "%b %Y") 
 
 ggsave(here("StudyOutput",
   "plot.entry.study.cohorts.png"),
-       width=12.5, height=11)
+       width=12, height=14)#height 11
 
 # age by cohort and sex ----
 
 person %>% 
   select(person_id, age, gender,
+         COVID19_vaccine_date,
          COVID19_diagnosis_test_date,
          COVID19_hospital_date,
+         COVID19_icu_date,
          COVID19_death_date)%>%
+  rename("COVID-19 vaccination"="COVID19_vaccine_date") %>% 
   rename("Outpatient COVID-19"="COVID19_diagnosis_test_date") %>% 
-  rename("COVID-19 hospitalisation"="COVID19_hospital_date") %>% 
+  rename("COVID-19 hospitalisation"="COVID19_hospital_date") %>%
+  rename("COVID-19 ICU admission"="COVID19_icu_date") %>%
   rename("COVID-19 death"="COVID19_death_date") %>% 
   mutate("General population"=as.Date(study.start.date)) %>% 
   pivot_longer(!c(person_id, age, gender),names_to = "group", values_to = "date",
@@ -248,7 +295,9 @@ person %>%
                       levels=c("General population",
                         "Outpatient COVID-19",
                         "COVID-19 hospitalisation",
-                        "COVID-19 death" ))) %>%  
+                        "COVID-19 ICU admission",
+                        "COVID-19 death",
+                        "COVID-19 vaccination"))) %>%  
   ggplot()+
   facet_grid(group ~ gender ,
              scales = "free_y", switch = "y")+
@@ -269,8 +318,102 @@ person %>%
 
 ggsave(here("StudyOutput",
   "age.histogram.png"),
-        dpi=600,
-        width = 14, height = 9)
+        width = 12, height = 14)
+# first doses------------
+first_dose<- first_vacc %>%
+  select(person_id,
+         drug_exposure_start_date,
+         first_dose)%>%
+  pivot_longer(!c(person_id, first_dose),names_to = "group", values_to = "date",
+               values_drop_na = TRUE)%>% 
+  bind_rows(
+    first_vacc%>% 
+      select(person_id, drug_exposure_start_date)%>%
+      mutate(first_dose="Any first dose") %>%
+      pivot_longer(!c(person_id, first_dose),names_to = "group", values_to = "date",
+                   values_drop_na = TRUE))%>%
+  mutate(first_dose=factor(first_dose,
+                           levels=c(
+                             "BNT162b2 first-dose",
+                             "ChAdOx1 first-dose",
+                             "mRNA-1273 first-dose",
+                             "Ad26.COV2.S", 
+                             "Any first dose"),
+                           labels= c(
+                             "BNT162b2 first-dose",
+                             "ChAdOx1 first-dose",
+                             "mRNA-1273 first-dose",
+                             "Ad26.COV2.S single-dose", 
+                             "Any first dose"
+                           ))) 
+first_dose%>%
+  ggplot(aes(fill=first_dose))+
+  facet_grid(first_dose ~ ., scales = "free_y")+
+  geom_histogram(aes(date), color="black", binwidth = 5)+#8
+  theme_bw()+
+  theme(legend.title = element_blank(),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        strip.text = element_text(size=14, face="bold"),
+        strip.text.y.left = element_text(angle = 0),
+        strip.background = element_rect( fill="#f7f7f7"), 
+        legend.text=element_text(size=14),
+        legend.position = "top")+
+  ylab("N")+
+  xlab("Date of cohort entry") +
+  scale_y_continuous(labels = scales::comma)+
+  scale_fill_manual(values=c("#e34a33", "#b30000", "#2b8cbe", "#045a8d", "#984ea3")) +
+  scale_x_date(date_breaks = "6 month", date_labels =  "%b %Y") 
+
+ggsave(here("StudyOutput",
+            "plot.entry.firstdose.cohorts.png"),
+       width=11.5, height=14)
+
+# first doses by age group-----------
+person %>% 
+  select(person_id, age_gr2, gender,
+         COVID19_vaccine_date,
+         BNT162b2_date,
+         ChAdOx1_date,
+         mRNA1273_date,
+         Ad26COV2S_date
+     )%>%
+  rename("Any first dose"="COVID19_vaccine_date") %>% 
+  rename("BNT162b2 first-dose"="BNT162b2_date") %>% 
+  rename("ChAdOx1 first-dose"="ChAdOx1_date") %>%
+  rename("mRNA-1273 first-dose"="mRNA1273_date") %>%
+  rename("Ad26.COV2.S single-dose"="Ad26COV2S_date") %>% 
+  pivot_longer(!c(person_id, age_gr2, gender),names_to = "group", values_to = "date",
+               values_drop_na = TRUE)%>% 
+  mutate(group=factor(group,
+                      levels=c(
+                        "BNT162b2 first-dose",
+                        "ChAdOx1 first-dose",
+                        "mRNA-1273 first-dose",
+                        "Ad26.COV2.S single-dose", 
+                        "Any first dose"))) %>% 
+  ggplot(aes(fill=group))+
+  facet_grid(group ~ age_gr2, scales = "free_y")+
+  geom_histogram(aes(date), color="black", binwidth = 8)+#8
+  theme_bw()+
+  theme(legend.title = element_blank(),
+        axis.text=element_text(size=12),
+        axis.title=element_text(size=14,face="bold"),
+        strip.text = element_text(size=14, face="bold"),
+        strip.text.y.left = element_text(angle = 0),
+        strip.background = element_rect( fill="#f7f7f7"), 
+        legend.text=element_text(size=14),
+        legend.position = "top")+
+  ylab("N")+
+  xlab("Date of cohort entry") +
+  scale_y_continuous(labels = scales::comma)+
+  scale_fill_manual(values=c("#984ea3","#ff7f00", "#910404", "#4daf4a","#2b8cbe")) +
+  scale_x_date(date_breaks = "9 month", date_labels =  "%b %Y") 
+
+ggsave(here("StudyOutput",
+            "plot.firstdose.age.png"),
+       width=12, height=14)
+
 
 # symptoms -----
 
@@ -340,7 +483,7 @@ plot.data %>%
   geom_point(size=3)+
   theme_bw()+
   theme(legend.position="none",
-        axis.text=element_text(size=14),
+        axis.text=element_text(size=10),
         axis.title=element_text(size=14,face="bold"),
         strip.text = element_text(size=14, face="bold"),
         strip.text.y.left = element_text(angle = 0),
@@ -349,7 +492,7 @@ plot.data %>%
   xlab("Date of cohort entry") +
   scale_y_continuous(labels = scales::percent)+
   scale_fill_manual(values=c("#377eb8", "#4daf4a", "#984ea3")) +
-  scale_x_date(date_breaks = "5 month", date_labels =  "%b %Y") 
+  scale_x_date(date_breaks = "9 month", date_labels =  "%b %Y") 
 
 
 ggsave(here("StudyOutput",
@@ -358,3 +501,174 @@ ggsave(here("StudyOutput",
 
 
 
+
+
+# symptoms stratified by gender-----
+
+plot.data<-bind_rows(
+  person %>% 
+    group_by(month = lubridate::floor_date(COVID19_diagnosis_test_date, "month"), gender) %>%
+    summarise(prop=sum(!is.na(cough))/sum(!is.na(COVID19_diagnosis_test_date))) %>% 
+    mutate(group="Cough") %>% 
+    filter(!is.na(month)),
+  person %>% 
+    group_by(month = lubridate::floor_date(COVID19_diagnosis_test_date, "month"), gender) %>%
+    summarise(prop=sum(!is.na(dyspnea))/sum(!is.na(COVID19_diagnosis_test_date))) %>% 
+    mutate(group="Dyspnea") %>% 
+    filter(!is.na(month)),
+  person %>% 
+    group_by(month = lubridate::floor_date(COVID19_diagnosis_test_date, "month"), gender) %>%
+    summarise(prop=sum(!is.na(diarrhea))/sum(!is.na(COVID19_diagnosis_test_date))) %>% 
+    mutate(group="Diarrhea") %>% 
+    filter(!is.na(month)),
+  person %>% 
+    group_by(month = lubridate::floor_date(COVID19_diagnosis_test_date, "month"), gender) %>%
+    summarise(prop=sum(!is.na(fever))/sum(!is.na(COVID19_diagnosis_test_date))) %>% 
+    mutate(group="Fever") %>% 
+    filter(!is.na(month)),
+  person %>% 
+    group_by(month = lubridate::floor_date(COVID19_diagnosis_test_date, "month"), gender) %>%
+    summarise(prop=sum(!is.na(myalgia))/sum(!is.na(COVID19_diagnosis_test_date))) %>% 
+    mutate(group="Myalgia") %>% 
+    filter(!is.na(month)),
+  person %>% 
+    group_by(month = lubridate::floor_date(COVID19_diagnosis_test_date, "month"), gender) %>%
+    summarise(prop=sum(!is.na(anosmia_hyposmia_dysgeusia))/sum(!is.na(COVID19_diagnosis_test_date))) %>% 
+    mutate(group="Anosmia, hyposmia, or dysgeusia") %>% 
+    filter(!is.na(month)),
+  person %>% 
+    group_by(month = lubridate::floor_date(COVID19_diagnosis_test_date, "month"), gender) %>%
+    summarise(prop=sum(!is.na(malaise_fatigue))/sum(!is.na(COVID19_diagnosis_test_date))) %>% 
+    mutate(group="Malaise or fatigue") %>% 
+    filter(!is.na(month)),
+  person %>% 
+    group_by(month = lubridate::floor_date(COVID19_diagnosis_test_date, "month"), gender) %>%
+    summarise(prop=sum(!is.na(pain))/sum(!is.na(COVID19_diagnosis_test_date))) %>% 
+    mutate(group="Pain") %>% 
+    filter(!is.na(month)),
+  person %>% 
+    group_by(month = lubridate::floor_date(COVID19_diagnosis_test_date, "month"), gender) %>%
+    summarise(prop=sum(!is.na(headache))/sum(!is.na(COVID19_diagnosis_test_date))) %>% 
+    mutate(group="Headache") %>% 
+    filter(!is.na(month))
+)
+
+plot.data.gender<-plot.data %>% 
+  mutate(group=factor(
+    group,
+    levels=c("Anosmia, hyposmia, or dysgeusia",
+             "Cough",
+             "Dyspnea", "Diarrhea",
+             "Fever",
+             "Headache",
+             "Malaise or fatigue",
+             "Myalgia","Pain" )))
+
+plot.data.gender %>% 
+  ggplot(aes(x=month, y=prop))+
+  facet_wrap(vars(group))+
+  geom_line(aes(linetype=gender),size=0.75)+
+  geom_point(size=3)+
+  theme_bw()+
+  theme(legend.position="top",
+        legend.title = element_blank(),
+        axis.text=element_text(size=10),
+        axis.title=element_text(size=14,face="bold"),
+        strip.text = element_text(size=14, face="bold"),
+        strip.text.y.left = element_text(angle = 0),
+        strip.background = element_rect( fill="#f7f7f7"))+
+  ylab("Proportion of cohort")+
+  xlab("Date of cohort entry") +
+  scale_y_continuous(labels = scales::percent)+
+  scale_x_date(date_breaks = "9 month", date_labels =  "%b %Y") 
+
+
+ggsave(here("StudyOutput",
+            "plot.sytptoms.gender.png"),
+       width=12.5, height=11)
+
+
+
+
+# symptoms stratified by age group-----
+
+plot.data<-bind_rows(
+  person %>% 
+    group_by(month = lubridate::floor_date(COVID19_diagnosis_test_date, "month"), age_gr2) %>%
+    summarise(prop=sum(!is.na(cough))/sum(!is.na(COVID19_diagnosis_test_date))) %>% 
+    mutate(group="Cough") %>% 
+    filter(!is.na(month)),
+  person %>% 
+    group_by(month = lubridate::floor_date(COVID19_diagnosis_test_date, "month"), age_gr2) %>%
+    summarise(prop=sum(!is.na(dyspnea))/sum(!is.na(COVID19_diagnosis_test_date))) %>% 
+    mutate(group="Dyspnea") %>% 
+    filter(!is.na(month)),
+  person %>% 
+    group_by(month = lubridate::floor_date(COVID19_diagnosis_test_date, "month"), age_gr2) %>%
+    summarise(prop=sum(!is.na(diarrhea))/sum(!is.na(COVID19_diagnosis_test_date))) %>% 
+    mutate(group="Diarrhea") %>% 
+    filter(!is.na(month)),
+  person %>% 
+    group_by(month = lubridate::floor_date(COVID19_diagnosis_test_date, "month"), age_gr2) %>%
+    summarise(prop=sum(!is.na(fever))/sum(!is.na(COVID19_diagnosis_test_date))) %>% 
+    mutate(group="Fever") %>% 
+    filter(!is.na(month)),
+  person %>% 
+    group_by(month = lubridate::floor_date(COVID19_diagnosis_test_date, "month"), age_gr2) %>%
+    summarise(prop=sum(!is.na(myalgia))/sum(!is.na(COVID19_diagnosis_test_date))) %>% 
+    mutate(group="Myalgia") %>% 
+    filter(!is.na(month)),
+  person %>% 
+    group_by(month = lubridate::floor_date(COVID19_diagnosis_test_date, "month"), age_gr2) %>%
+    summarise(prop=sum(!is.na(anosmia_hyposmia_dysgeusia))/sum(!is.na(COVID19_diagnosis_test_date))) %>% 
+    mutate(group="Anosmia, hyposmia, or dysgeusia") %>% 
+    filter(!is.na(month)),
+  person %>% 
+    group_by(month = lubridate::floor_date(COVID19_diagnosis_test_date, "month"), age_gr2) %>%
+    summarise(prop=sum(!is.na(malaise_fatigue))/sum(!is.na(COVID19_diagnosis_test_date))) %>% 
+    mutate(group="Malaise or fatigue") %>% 
+    filter(!is.na(month)),
+  person %>% 
+    group_by(month = lubridate::floor_date(COVID19_diagnosis_test_date, "month"), age_gr2) %>%
+    summarise(prop=sum(!is.na(pain))/sum(!is.na(COVID19_diagnosis_test_date))) %>% 
+    mutate(group="Pain") %>% 
+    filter(!is.na(month)),
+  person %>% 
+    group_by(month = lubridate::floor_date(COVID19_diagnosis_test_date, "month"), age_gr2) %>%
+    summarise(prop=sum(!is.na(headache))/sum(!is.na(COVID19_diagnosis_test_date))) %>% 
+    mutate(group="Headache") %>% 
+    filter(!is.na(month))
+)
+
+plot.data.age<-plot.data %>% 
+  mutate(group=factor(
+    group,
+    levels=c("Anosmia, hyposmia, or dysgeusia",
+             "Cough",
+             "Dyspnea", "Diarrhea",
+             "Fever",
+             "Headache",
+             "Malaise or fatigue",
+             "Myalgia","Pain" )))
+
+plot.data.age %>% 
+  ggplot(aes(x=month, y=prop))+
+  facet_wrap(vars(group))+
+  geom_line(aes(linetype=age_gr2),size=0.75)+
+  geom_point(size=3)+
+  theme_bw()+
+  theme(legend.position="top",
+        legend.title = element_blank(),
+        axis.text=element_text(size=10),
+        axis.title=element_text(size=14,face="bold"),
+        strip.text = element_text(size=14, face="bold"),
+        strip.text.y.left = element_text(angle = 0),
+        strip.background = element_rect( fill="#f7f7f7"))+
+  ylab("Proportion of cohort")+
+  xlab("Date of cohort entry") +
+  scale_y_continuous(labels = scales::percent)+
+  scale_x_date(date_breaks = "9 month", date_labels =  "%b %Y")
+
+ggsave(here("StudyOutput",
+            "plot.sytptoms.age.png"),
+       width=12.5, height=11)

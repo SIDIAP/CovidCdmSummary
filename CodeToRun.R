@@ -33,15 +33,15 @@ library(rms)
 # having run renv::restore above
 
 # set up  ------
-output.folder<-here::here("output")
+output.folder<-here::here("StudyOutput")
 # the path to a folder (that exists) where the results from this analysis will be saved
 
 oracleTempSchema<-NULL
 
 # If you haven´t already, save database details to .Renviron by running:
 # usethis::edit_r_environ()
-server<-"...."
-server_dbi<-"...."
+server<-Sys.getenv("SERVER")
+server_dbi<-Sys.getenv("SERVER_DBI")
 
 user<-Sys.getenv("DB_USER")
 password<- Sys.getenv("DB_PASSWORD")
@@ -65,30 +65,32 @@ db <- dbConnect(RPostgreSQL::PostgreSQL(),
 
 
 # The OHDSI DatabaseConnector connection details
-targetDialect <-"...." 
+targetDialect <-"postgresql"
 # This is your sql dialect used with the OHDSI SqlRender package
 
 # The name of the schema that contains the OMOP CDM with patient-level data
-cdm_database_schema<-"...."
+cdm_database_schema<-Sys.getenv("DB_CDM_SCHEMA")
+
 # The name of the schema that contains the vocabularies
-vocabulary_database_schema<-"...."
+vocabulary_database_schema<-Sys.getenv("DB_CDM_SCHEMA")
+
 
 # The name of the schema where a results table will be created 
-results_database_schema<-"...."
+results_database_schema<-Sys.getenv("DB_WRITE_SCHEMA")
+
 
 # Tables to be created in your results schema for this analysis
 # You can keep the above names or change them
 # Note, any existing tables in your results schema with the same name will be overwritten
-cohortTable<-"...."
-cohortTableComorbidities<-"...."
+cohortTable<-"Cdm_COVID"
+cohortTableComorbidities<-"Cdm_COVID_comorbidities"
 
 # The name/ acronym for your database (to be used in the titles of reports, etc)
-db.name<-"...."
+db.name<-"SIDIAP"
 
 # if you have already created the cohorts, you can set this to FALSE to skip instantiating these cohorts again
 create.cohortTable<-FALSE
 create.cohortTableComorbidities<-FALSE
-
 
 # run the analysis ------
 start<-Sys.time()

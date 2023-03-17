@@ -1,5 +1,12 @@
 postgresql-42.2.18.jar
 .Rhistory
 .Rproj.user/*
-WorkingData/DataForAnalysis.RData
+WorkingData/*
 CodeToRun_local1.R
+.Rproj.user
+.RDataTmp.
+WorkingScripts/*
+StudyOutput_old/*
+.RData
+.Rprofile
+.RDataTmp
